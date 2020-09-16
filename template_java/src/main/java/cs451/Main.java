@@ -1,14 +1,12 @@
 package cs451;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.Socket;
-
 public class Main {
+
+    private static Broadcaster broadcaster;
 
     private static void handleSignal() {
         //immediately stop network packet processing
+        broadcaster.stop();
         System.out.println("Immediately stopping network packet processing.");
 
         //write/flush output file if necessary
@@ -48,6 +46,13 @@ public class Main {
             System.out.println("Config: " + parser.config());
         }
 
+        //Brodcast setup
+
+        broadcaster = new URBBroadcast(parser.hosts(), parser.myId()/*nb_messages*/);
+
+
         BarrierParser.Barrier.waitOnBarrier();
+        System.out.println("Starting broadcast");
+        broadcaster.start();
     }
 }
