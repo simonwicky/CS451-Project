@@ -48,11 +48,11 @@ public class Main {
 
         //Brodcast setup
 
-        broadcaster = new URBBroadcast(parser.hosts(), parser.myId()/*nb_messages*/);
+        broadcaster = new URBBroadcast(parser.hosts(), parser.myId());
 
 
         BarrierParser.Barrier.waitOnBarrier();
         System.out.println("Starting broadcast");
-        broadcaster.start();
+        broadcaster.start(3);
     }
 }
