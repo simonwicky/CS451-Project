@@ -1,42 +1,59 @@
 package cs451;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
-public class URBBroadcast implements Broadcaster {
+public class URBBroadcast extends Broadcaster {
 
-    private NetworkManager networkManager;
-    private List<Host> hosts;
-    private int nb_host;
-    private int id;
 
-    private List<Long> messages;
-    private List<Long> delivered;
-    private List<Long> acks;
+    private long nb_msg;
 
-    public URBBroadcast(List<Host> hosts, int id) {
-        this.networkManager = new NetworkManager(hosts, id);
-        this.hosts = hosts;
-        this.nb_host = hosts.size();
-        this.id = id;
-    }
+    private List<long[]> messages;
+    private List<long[]> delivered;
+    private List<long[]> acks;
 
-    public void start(int n) {
+
+
+    public URBBroadcast(List<Host> hosts, int id, String config) {
+        super(hosts, id);
+
+        this.messages = new ArrayList<>();
+        this.delivered = new ArrayList<>();
+        this.acks = new ArrayList<>();   
+
+        // scanning config
         try {
-            for (Host host : hosts) {
-                if (host.getId() != id) {
-                    networkManager.sendTo(host.getId(), 1);
-                }
-            }
-            long[] recv = networkManager.receive();
-            System.out.println("Received : " + recv[1] + " from "+ recv[0]);
-
-        } catch (IOException e) {
+            nb_msg = new Scanner(new File(config)).nextLong();
+        } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
     }
 
-    public void stop() {
-        networkManager.closeSocket();
+
+
+
+    // Function that handle sending
+    protected void run() {
+        for (long i = 0; i < nb_msg; ++i) {
+            broadcast(i);
+        }
     }
+
+    private void broadcast(long msg) {
+        for (Host host : hosts) {
+            networkManager.sendTo(host.getId(), msg);
+        }
+        logBroadcast(msg);
+    }
+
+    protected void handleMsg(long[] msg) {
+        logDeliver(msg);
+    }
+
+
+
+
 }

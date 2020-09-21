@@ -1,16 +1,31 @@
 package cs451;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class Main {
 
     private static Broadcaster broadcaster;
+    private static Path path;
 
     private static void handleSignal() {
-        //immediately stop network packet processing
+        // immediately stop network packet processing
         broadcaster.stop();
         System.out.println("Immediately stopping network packet processing.");
 
-        //write/flush output file if necessary
+        // write/flush output file if necessary
         System.out.println("Writing output.");
+        String log = broadcaster.getLog();
+        System.out.println(log);
+        try {
+            Files.writeString(path, log, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private static void initSignalHandlers() {
@@ -47,12 +62,15 @@ public class Main {
         }
 
         //Brodcast setup
+        broadcaster = new URBBroadcast(parser.hosts(), parser.myId(), parser.config());
 
-        broadcaster = new URBBroadcast(parser.hosts(), parser.myId());
+        //logfile setup
+        path = Paths.get(parser.output());
+
 
 
         BarrierParser.Barrier.waitOnBarrier();
         System.out.println("Starting broadcast");
-        broadcaster.start(3);
+        broadcaster.start();
     }
 }

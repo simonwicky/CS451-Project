@@ -2,3 +2,5 @@ template_java/.classpath
 template_java/.project
 template_java/.settings/
 template_java/.vscode/
+.DS_Store
+*.out

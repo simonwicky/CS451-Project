@@ -35,23 +35,26 @@ public class NetworkManager {
         }
     }
 
-    public void sendTo(int neighbourIndex, long msg) throws IOException {
-        //long to byte
-        byte[] buf = ByteBuffer.allocate(8).putLong(msg).array();
+    public void sendTo(int neighbourIndex, long msg){
+        try {
+            //long to byte
+            byte[] buf = ByteBuffer.allocate(8).putLong(msg).array();
 
-        //datagram setup
-        DatagramPacket packet = new DatagramPacket(buf, 8, InetAddress.getByName(idToHosts.get(neighbourIndex).getIp()), idToHosts.get(neighbourIndex).getPort());
+            //datagram setup
+            DatagramPacket packet = new DatagramPacket(buf, 8, InetAddress.getByName(idToHosts.get(neighbourIndex).getIp()), idToHosts.get(neighbourIndex).getPort());
 
-        //send datagram
-        socket.send(packet);
+            //send datagram
+                socket.send(packet);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     //return an array of two longs, id of sender and message
-    public long[] receive() throws IOException{
+    public long[] receive() throws IOException {
         byte[] buf = new byte[8];
         DatagramPacket packet = new DatagramPacket(buf,8);
         socket.receive(packet);
-        System.out.println(hostToId);
         int id = hostToId.get(new HostInfo(packet.getAddress(), packet.getPort()));
         return new long[] {id, ByteBuffer.wrap(buf).getLong()};
     }
