@@ -65,23 +65,23 @@ public class Main {
 
         Coordinator coordinator = new Coordinator(parser.myId(), parser.barrierIp(), parser.barrierPort(), parser.signalIp(), parser.signalPort());
 
-	System.out.println("Waiting for all processes for finish initialization");
+        //Brodcast setup
+        broadcaster = new URBBroadcast(parser.hosts(), parser.myId(), parser.config());
+        //logfile setup
+        path = Paths.get(parser.output());
+
+	    System.out.println("Waiting for all processes for finish initialization");
         coordinator.waitOnBarrier();
 
-	System.out.println("Broadcasting messages...");
+	    System.out.println("Broadcasting messages...");
+        broadcaster.start();
 
-	System.out.println("Signaling end of broadcasting messages");
+	    System.out.println("Signaling end of broadcasting messages");
         coordinator.finishedBroadcasting();
 
 	while (true) {
 	    // Sleep for 1 hour
 	    Thread.sleep(60 * 60 * 1000);
 	}
-        //Brodcast setup
-        broadcaster = new URBBroadcast(parser.hosts(), parser.myId(), parser.config());
-        //logfile setup
-        path = Paths.get(parser.output());
-        System.out.println("Starting broadcast");
-        broadcaster.start();
     }
 }
