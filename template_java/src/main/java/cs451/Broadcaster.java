@@ -29,7 +29,7 @@ public abstract class Broadcaster {
 
     //function that will broadcast and handle msg. Unique to each type of broadcaster.
     abstract protected void run();
-    abstract protected void handleMsg(long[] msg);
+    abstract protected void handleMsg(byte[] msg, int id);
 
     public void start() {
         // recvThread
@@ -57,22 +57,22 @@ public abstract class Broadcaster {
         //System.out.println("b " + n);
     }
 
-    protected void logDeliver(long[] msg) {
+    protected void logDeliver(long msg, int id) {
         log.append("d ");
-        log.append(msg[0]);
+        log.append(id);
         log.append(" ");
-        log.append(msg[1]);
+        log.append(msg);
         log.append("\n");
         //Debug
-        //System.out.println("d " + msg[0] + " " + msg[1]);
+        //System.out.println("d " + id + " " + msg);
     }
 
     // Function that handle receiving, pass on to handleMsg for heart of broadcast algorithm
     private void recv() {
         while (true) {
             try {
-                long[] recv = networkManager.receive();
-                handleMsg(recv);
+                NetworkManager.Message recv = networkManager.receive();
+                handleMsg(recv.getData(), recv.getId());
             } catch (SocketException e) {
                 System.out.println("Socket closed");
                 return;

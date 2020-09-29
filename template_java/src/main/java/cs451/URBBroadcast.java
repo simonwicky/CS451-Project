@@ -2,6 +2,7 @@ package cs451;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -38,19 +39,19 @@ public class URBBroadcast extends Broadcaster {
     // Function that handle sending
     protected void run() {
         for (long i = 0; i < nb_msg; ++i) {
-            broadcast(i);
+            broadcast(ByteBuffer.allocate(8).putLong(i).array());
         }
     }
 
-    private void broadcast(long msg) {
+    private void broadcast(byte[] msg) {
         for (Host host : hosts) {
             networkManager.sendTo(host.getId(), msg);
         }
-        logBroadcast(msg);
+        logBroadcast(ByteBuffer.wrap(msg).getLong());
     }
 
-    protected void handleMsg(long[] msg) {
-        logDeliver(msg);
+    protected void handleMsg(byte[] msg, int id) {
+        logDeliver(ByteBuffer.wrap(msg).getLong(), id);
     }
 
 
