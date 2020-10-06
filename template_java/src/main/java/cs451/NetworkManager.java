@@ -74,10 +74,11 @@ public class NetworkManager {
         for (Map.Entry<Integer, List<Message>> entry : toBeAcked.entrySet()) {
             for (Message msg : entry.getValue()) {
                 sendTo(entry.getKey(), msg);
+                System.out.println("Retransmitting lost message");
             }
         }
         try {
-            Thread.sleep(10000);
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -88,10 +89,10 @@ public class NetworkManager {
         byte[] buf = new byte[1000];
         DatagramPacket packet = new DatagramPacket(buf,buf.length);
         socket.receive(packet);
-        Message msg = Message.fromBytes(packet.getData());
+        Message msg = Message.fromBytes(packet.getData(), packet.getLength());
         if(msg.type == 1) {
             //debug
-            System.out.println("ACK from " + msg.id);
+            //System.out.println("ACK from " + msg.id);
 
             //handle ack
             for(Message m : toBeAcked.get(msg.id)) {
@@ -137,13 +138,13 @@ public class NetworkManager {
             return out;
         }
 
-        private static Message fromBytes(byte[] bytes) {
-            if(bytes.length < 8) {
+        private static Message fromBytes(byte[] bytes, int nb_bytes) {
+            if(nb_bytes < 8) {
                 return null;
             }
             byte[] id_b = new byte[4];
             byte[] type_b = new byte[4];
-            byte[] data = new byte[bytes.length - 8];
+            byte[] data = new byte[nb_bytes - 8];
             System.arraycopy(bytes, 0, id_b, 0, id_b.length);
             System.arraycopy(bytes, id_b.length, type_b, 0, type_b.length);
             System.arraycopy(bytes, id_b.length + type_b.length, data, 0, data.length);
