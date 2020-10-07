@@ -6,3 +6,5 @@ template_java/.settings/
 template_java/.vscode/
 .DS_Store
 *.out
+
+logs/

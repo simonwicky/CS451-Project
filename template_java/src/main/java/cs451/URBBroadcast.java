@@ -40,7 +40,7 @@ public class URBBroadcast extends Broadcaster {
 
     //Called to start the broadcasting process. Triggers broadcasting of all messages
     protected void run() {
-        for (long i = 0; i < nb_msg; ++i) {
+        for (long i = 1; i <= nb_msg; ++i) {
             URBbroadcast(ByteBuffer.allocate(8).putLong(i).array());
 
             try {
