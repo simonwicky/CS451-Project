@@ -1,10 +1,14 @@
 package cs451;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 public class Main {
 
@@ -46,11 +50,12 @@ public class Main {
         // example
         long pid = ProcessHandle.current().pid();
         System.out.println("My PID is " + pid + ".");
-        System.out.println("Use 'kill -SIGINT " + pid + " ' or 'kill -SIGTERM " + pid + " ' to stop processing packets.");
+        System.out
+                .println("Use 'kill -SIGINT " + pid + " ' or 'kill -SIGTERM " + pid + " ' to stop processing packets.");
 
         System.out.println("My id is " + parser.myId() + ".");
         System.out.println("List of hosts is:");
-        for (Host host: parser.hosts()) {
+        for (Host host : parser.hosts()) {
             System.out.println(host.getId() + ", " + host.getIp() + ", " + host.getPort());
         }
 
@@ -62,26 +67,43 @@ public class Main {
             System.out.println("Config: " + parser.config());
         }
 
+        Coordinator coordinator = new Coordinator(parser.myId(), parser.barrierIp(), parser.barrierPort(),
+                parser.signalIp(), parser.signalPort());
 
-        Coordinator coordinator = new Coordinator(parser.myId(), parser.barrierIp(), parser.barrierPort(), parser.signalIp(), parser.signalPort());
+        // scanning config
+        long nb_msg = 0;
+        ArrayList<String> config = new ArrayList<>();
+        try {
+            BufferedReader s = new BufferedReader(new FileReader(new File(parser.config())));
+            nb_msg = Long.parseLong(s.readLine());
+            String line;
+            while ((line = s.readLine()) != null) {
+                config.add(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        //Brodcast setup
-        broadcaster = new URBBroadcast(parser.hosts(), parser.myId(), parser.config());
-        //logfile setup
+        String[] configArray = new String[config.size()];
+        configArray = config.toArray(configArray);
+
+        // Brodcast setup
+        broadcaster = new FIFOBroadcast(parser.hosts(), parser.myId(), nb_msg);
+        // logfile setup
         path = Paths.get(parser.output());
 
-	    System.out.println("Waiting for all processes for finish initialization");
+        System.out.println("Waiting for all processes for finish initialization");
         coordinator.waitOnBarrier();
 
-	    System.out.println("Broadcasting messages...");
+        System.out.println("Broadcasting messages...");
         broadcaster.start();
 
-	    System.out.println("Signaling end of broadcasting messages");
+        System.out.println("Signaling end of broadcasting messages");
         coordinator.finishedBroadcasting();
 
-	while (true) {
-	    // Sleep for 1 hour
-	    Thread.sleep(60 * 60 * 1000);
-	}
+        while (true) {
+            // Sleep for 1 hour
+            Thread.sleep(60 * 60 * 1000);
+        }
     }
 }

@@ -1,19 +1,15 @@
 package cs451;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Scanner;
 import java.util.Set;
 
 public class URBBroadcast extends Broadcaster {
 
-    private long nb_msg;
     private final int id;
     private final int deliver_threshold;
 
@@ -21,8 +17,8 @@ public class URBBroadcast extends Broadcaster {
     private HashSet<Message> delivered;
     private HashMap<Message, Set<Integer>> acks;
 
-    public URBBroadcast(List<Host> hosts, int id, String config) {
-        super(hosts, id);
+    public URBBroadcast(List<Host> hosts, int id, long nb_msg) {
+        super(hosts, id, nb_msg);
 
         this.forward = new ArrayList<>();
         this.delivered = new HashSet<>();
@@ -30,31 +26,10 @@ public class URBBroadcast extends Broadcaster {
         this.id = id;
         this.deliver_threshold = (int) Math.ceil(hosts.size() / 2.0);
 
-        // scanning config
-        try {
-            nb_msg = new Scanner(new File(config)).nextLong();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
     }
 
-    //Called to start the broadcasting process. Triggers broadcasting of all messages
-    protected void run() {
-        for (long i = 1; i <= nb_msg; ++i) {
-            URBbroadcast(ByteBuffer.allocate(8).putLong(i).array());
-
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-
-    }
-
-    //Responsible for broadcast event
-    private void URBbroadcast(byte[] msg) {
+    // Responsible for broadcast event
+    protected void broadcast(byte[] msg) {
         forward.add(new Message(msg, id));
         BEbroadcast(prepareMsg(msg));
         logBroadcast(ByteBuffer.wrap(msg).getLong());
@@ -66,8 +41,8 @@ public class URBBroadcast extends Broadcaster {
         }
     }
 
-    //Responsible for deliver event
-    protected void handleMsg(byte[] msg, int from) {
+    // Responsible for deliver event
+    protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, int from) {
 
         Message m = reconstruct(msg);
 
@@ -75,17 +50,22 @@ public class URBBroadcast extends Broadcaster {
             forward.add(m);
             BEbroadcast(msg);
         }
-        
-        if(acks.get(m) == null) {
+
+        if (acks.get(m) == null) {
             acks.put(m, new HashSet<>());
         }
-        if (acks.get(m).add(from)){
-            //new ack. Since we deliver upon majority, we can check here if it can be delivered.
+        if (acks.get(m).add(from)) {
+            // new ack. Since we deliver upon majority, we can check here if it can be
+            // delivered.
             if (acks.get(m).size() >= deliver_threshold && forward.contains(m) && !delivered.add(m)) {
-                logDeliver(ByteBuffer.wrap(m.data).getLong(),m.id);
+                Broadcaster.Message deliveredMsg = new Broadcaster.Message(ByteBuffer.wrap(m.data).getLong(), m.id);
+                ArrayList<Broadcaster.Message> list = new ArrayList<>();
+                list.add(deliveredMsg);
+                return list;
             }
         }
 
+        return null;
 
     }
 
@@ -141,9 +121,7 @@ public class URBBroadcast extends Broadcaster {
                 return false;
             return true;
         }
-        
+
     }
-
-
 
 }
