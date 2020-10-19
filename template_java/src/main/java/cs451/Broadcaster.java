@@ -41,15 +41,15 @@ public abstract class Broadcaster {
         recvThread.start();
 
         // sendThread
-        for (long i = 1; i <= nb_msg; ++i) {
+        for (long i = nb_msg; i >= 1; --i) {
             broadcast(ByteBuffer.allocate(8).putLong(i).array());
 
             // TOCLEAN : DEBUG ONLY
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // try {
+            // Thread.sleep(5000);
+            // } catch (InterruptedException e) {
+            // e.printStackTrace();
+            // }
             // TOCLEAN
         }
 
@@ -75,7 +75,7 @@ public abstract class Broadcaster {
         log.append("d ");
         log.append(m.getId());
         log.append(" ");
-        log.append(m.getData());
+        log.append(m.getMsgId());
         log.append("\n");
         // Debug
         // System.out.println("d " + id + " " + msg);
@@ -104,20 +104,51 @@ public abstract class Broadcaster {
     }
 
     public static class Message {
-        private final long data;
+        private final long msgId;
         private final int id;
+        private final byte[] data;
 
-        public Message(long data, int id) {
-            this.data = data;
+        public Message(long msgId, int id, byte[] data) {
+            this.msgId = msgId;
             this.id = id;
+            this.data = data;
         }
 
-        public long getData() {
-            return data;
+        public long getMsgId() {
+            return msgId;
         }
 
         public int getId() {
             return id;
+        }
+
+        public byte[] getData() {
+            return data;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + id;
+            result = prime * result + (int) (msgId ^ (msgId >>> 32));
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            Message other = (Message) obj;
+            if (id != other.id)
+                return false;
+            if (msgId != other.msgId)
+                return false;
+            return true;
         }
 
     }

@@ -29,7 +29,7 @@ public class NetworkManager {
             // mapping setup, for fast sending and receiving
             for (Host host : hosts) {
                 this.idToHosts.put(host.getId(), host);
-                toBeAcked.put(host.getId(),new ArrayList<>());
+                toBeAcked.put(host.getId(), new ArrayList<>());
             }
 
             // socket creation
@@ -84,27 +84,28 @@ public class NetworkManager {
         }
     }
 
-    //return a message
+    // return a message
     public Message receive() throws IOException {
         byte[] buf = new byte[1000];
-        DatagramPacket packet = new DatagramPacket(buf,buf.length);
+        DatagramPacket packet = new DatagramPacket(buf, buf.length);
         socket.receive(packet);
         Message msg = Message.fromBytes(packet.getData(), packet.getLength());
-        if(msg.type == 1) {
-            //debug
-            //System.out.println("ACK from " + msg.id);
+        if (msg.type == 1) {
+            // debug
+            // System.out.println("ACK from " + msg.id);
 
-            //handle ack
-            for(Message m : toBeAcked.get(msg.id)) {
+            // handle ack
+            for (Message m : new ArrayList<>(toBeAcked.get(msg.id))) {
                 if (Arrays.equals(m.data, msg.data)) {
                     toBeAcked.get(msg.id).remove(msg);
                 }
+
             }
 
-            //return next message
+            // return next message
             return receive();
         } else {
-            //ack the msg and pass it to Broadcaster
+            // ack the msg and pass it to Broadcaster
             sendTo(msg.id, new Message(id, msg.data, 1));
             return msg;
         }
@@ -116,10 +117,9 @@ public class NetworkManager {
 
     public static class Message {
 
-
         private int id;
         private byte[] data;
-        //0 is actual msg, 1 is ack
+        // 0 is actual msg, 1 is ack
         private int type;
 
         public Message(int id, byte[] data, int type) {
@@ -139,7 +139,7 @@ public class NetworkManager {
         }
 
         private static Message fromBytes(byte[] bytes, int nb_bytes) {
-            if(nb_bytes < 8) {
+            if (nb_bytes < 8) {
                 return null;
             }
             byte[] id_b = new byte[4];
@@ -161,6 +161,6 @@ public class NetworkManager {
 
         public byte[] getData() {
             return data;
-        }        
+        }
     }
 }

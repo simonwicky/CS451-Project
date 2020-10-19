@@ -2,7 +2,6 @@ package cs451;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,8 +29,10 @@ public class URBBroadcast extends Broadcaster {
 
     // Responsible for broadcast event
     protected void broadcast(byte[] msg) {
-        forward.add(new Message(msg, id));
-        BEbroadcast(prepareMsg(msg));
+        byte[] msg_b = prepareMsg(msg);
+        Broadcaster.Message m = reconstruct(msg_b);
+        forward.add(m);
+        BEbroadcast(msg_b);
         logBroadcast(ByteBuffer.wrap(msg).getLong());
     }
 
@@ -44,7 +45,7 @@ public class URBBroadcast extends Broadcaster {
     // Responsible for deliver event
     protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, int from) {
 
-        Message m = reconstruct(msg);
+        Broadcaster.Message m = reconstruct(msg);
 
         if (!forward.contains(m)) {
             forward.add(m);
@@ -58,9 +59,8 @@ public class URBBroadcast extends Broadcaster {
             // new ack. Since we deliver upon majority, we can check here if it can be
             // delivered.
             if (acks.get(m).size() >= deliver_threshold && forward.contains(m) && !delivered.add(m)) {
-                Broadcaster.Message deliveredMsg = new Broadcaster.Message(ByteBuffer.wrap(m.data).getLong(), m.id);
                 ArrayList<Broadcaster.Message> list = new ArrayList<>();
-                list.add(deliveredMsg);
+                list.add(m);
                 return list;
             }
         }
@@ -78,50 +78,28 @@ public class URBBroadcast extends Broadcaster {
         return data;
     }
 
-    private Message reconstruct(byte[] msg) {
+    private Broadcaster.Message reconstruct(byte[] msg) {
 
         byte[] origin_b = new byte[4];
-        byte[] data = new byte[msg.length - origin_b.length];
+        byte[] msgId_b = new byte[8];
+        byte[] data = new byte[msg.length - origin_b.length - msgId_b.length];
         System.arraycopy(msg, 0, origin_b, 0, origin_b.length);
-        System.arraycopy(msg, origin_b.length, data, 0, data.length);
+        System.arraycopy(msg, origin_b.length, msgId_b, 0, msgId_b.length);
+        System.arraycopy(msg, origin_b.length + msgId_b.length, data, 0, data.length);
         int origin = ByteBuffer.wrap(origin_b).getInt();
-        return new Message(data, origin);
+        long msgId = ByteBuffer.wrap(msgId_b).getLong();
+        return new Broadcaster.Message(msgId, origin, data);
     }
 
-    private class Message {
-        private final byte[] data;
-        private final int id;
+    // private class Message {
+    // private final byte[] data;
+    // private final int id;
 
-        public Message(byte[] data, int id) {
-            this.data = data;
-            this.id = id;
-        }
+    // public Message(byte[] data, int id) {
+    // this.data = data;
+    // this.id = id;
+    // }
 
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + Arrays.hashCode(data);
-            result = prime * result + id;
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            Message other = (Message) obj;
-            if (!Arrays.equals(data, other.data))
-                return false;
-            if (id != other.id)
-                return false;
-            return true;
-        }
-
-    }
+    // }
 
 }
