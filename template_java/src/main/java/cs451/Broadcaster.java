@@ -41,7 +41,7 @@ public abstract class Broadcaster {
         recvThread.start();
 
         // sendThread
-        for (long i = nb_msg; i >= 1; --i) {
+        for (long i = 1; i <= nb_msg; ++i) {
             broadcast(ByteBuffer.allocate(8).putLong(i).array());
 
             // TOCLEAN : DEBUG ONLY
