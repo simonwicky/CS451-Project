@@ -202,8 +202,8 @@ class FifoBroadcastValidation(Validation):
         return True
 
 class LCausalBroadcastValidation(Validation):
-    def __init__(self, processes, outputDir, causalRelationships):
-        super().__init__(processes, outputDir)
+    def __init__(self, processes, messages, outputDir, causalRelationships):
+        super().__init__(processes,messages, outputDir)
 
     def generateConfig(self):
         raise NotImplementedError()

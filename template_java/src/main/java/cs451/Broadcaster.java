@@ -15,6 +15,8 @@ public abstract class Broadcaster {
     private Thread recvThread;
     private long nb_msg;
 
+    private long nb_delivered;
+
     protected Broadcaster(List<Host> hosts, int id, long nb_msg) {
         this.networkManager = new NetworkManager(hosts, id);
         this.hosts = hosts;
@@ -28,6 +30,8 @@ public abstract class Broadcaster {
                 recv();
             }
         });
+
+        nb_delivered = 0;
     }
 
     // function that will broadcast and handle msg. Unique to each type of
@@ -52,6 +56,7 @@ public abstract class Broadcaster {
             // }
             // TOCLEAN
         }
+        while (nb_delivered < nb_msg);
 
     }
 
@@ -68,7 +73,7 @@ public abstract class Broadcaster {
         log.append(n);
         log.append("\n");
         // Debug
-        // System.out.println("b " + n);
+        System.out.println("b " + n);
     }
 
     protected void logDeliver(Message m) {
@@ -77,8 +82,9 @@ public abstract class Broadcaster {
         log.append(" ");
         log.append(m.getMsgId());
         log.append("\n");
+        nb_delivered += 1;
         // Debug
-        // System.out.println("d " + id + " " + msg);
+        System.out.println("d " + m.getId() + " " + m.getMsgId());
     }
 
     // Function that handle receiving, pass on to handleMsg for heart of broadcast
