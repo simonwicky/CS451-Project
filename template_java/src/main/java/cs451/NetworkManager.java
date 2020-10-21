@@ -12,6 +12,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class NetworkManager {
 
@@ -19,17 +21,20 @@ public class NetworkManager {
     private DatagramSocket socket;
     private int id;
     private HashMap<Integer, List<Message>> toBeAcked;
+    private HashMap<Integer, Lock> locks;
 
     public NetworkManager(List<Host> hosts, int id) {
         this.idToHosts = new HashMap<>();
         this.id = id;
         this.toBeAcked = new HashMap<>();
+        this.locks = new HashMap<>();
 
         try {
             // mapping setup, for fast sending and receiving
             for (Host host : hosts) {
                 this.idToHosts.put(host.getId(), host);
                 toBeAcked.put(host.getId(), new ArrayList<>());
+                locks.put(host.getId(), new ReentrantLock());
             }
 
             // socket creation
@@ -41,12 +46,19 @@ public class NetworkManager {
         new Thread() {
             @Override
             public void run() {
-                retransmit();
+                while (true) {
+                    try {
+                        Thread.sleep(250);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    retransmit();
+                }
             }
         }.start();
     }
 
-    private void sendTo(int neighbourIndex, Message msg) {
+    private void sendTo(int neighbourIndex, Message msg, boolean newMsg) {
         try {
             byte[] buf = msg.serialize();
 
@@ -57,12 +69,21 @@ public class NetworkManager {
 
             // send datagram
             socket.send(packet);
+        } catch (SocketException e) {
+            System.out.println("Socket closed");
+            return;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (msg.type == 0) {
+        if (msg.type == 0 && newMsg) {
+            locks.get(neighbourIndex).lock();
             toBeAcked.get(neighbourIndex).add(msg);
+            locks.get(neighbourIndex).unlock();
         }
+    }
+
+    private void sendTo(int neighbourIndex, Message msg) {
+        sendTo(neighbourIndex, msg, true);
     }
 
     public void sendTo(int neighbourIndex, byte[] data) {
@@ -71,16 +92,14 @@ public class NetworkManager {
     }
 
     private void retransmit() {
+        System.out.println("Beginning retransmission");
         for (Map.Entry<Integer, List<Message>> entry : toBeAcked.entrySet()) {
+            locks.get(entry.getKey()).lock();
             for (Message msg : entry.getValue()) {
-                sendTo(entry.getKey(), msg);
-                System.out.println("Retransmitting lost message");
+                sendTo(entry.getKey(), msg, false);
+                // System.out.println("Retransmitting lost message");
             }
-        }
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            locks.get(entry.getKey()).unlock();
         }
     }
 
@@ -97,7 +116,9 @@ public class NetworkManager {
             // handle ack
             for (Message m : new ArrayList<>(toBeAcked.get(msg.id))) {
                 if (Arrays.equals(m.data, msg.data)) {
+                    locks.get(msg.id).lock();
                     toBeAcked.get(msg.id).remove(msg);
+                    locks.get(msg.id).unlock();
                 }
 
             }
@@ -161,6 +182,28 @@ public class NetworkManager {
 
         public byte[] getData() {
             return data;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Arrays.hashCode(data);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            Message other = (Message) obj;
+            if (!Arrays.equals(data, other.data))
+                return false;
+            return true;
         }
     }
 }
