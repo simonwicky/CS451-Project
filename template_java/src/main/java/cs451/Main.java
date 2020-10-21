@@ -88,7 +88,9 @@ public class Main {
         configArray = config.toArray(configArray);
 
         // Brodcast setup
-        //broadcaster = new LCBroadcast(parser.hosts(), parser.myId(), nb_msg, configArray);
+        // broadcaster = new LCBroadcast(parser.hosts(), parser.myId(), nb_msg,
+        // configArray);
+        // broadcaster = new URBBroadcast(parser.hosts(), parser.myId(), nb_msg);
         broadcaster = new FIFOBroadcast(parser.hosts(), parser.myId(), nb_msg);
         // logfile setup
         path = Paths.get(parser.output());

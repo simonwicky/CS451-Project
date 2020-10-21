@@ -5,6 +5,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class Broadcaster {
 
@@ -15,7 +16,7 @@ public abstract class Broadcaster {
     private Thread recvThread;
     private long nb_msg;
 
-    private long nb_delivered;
+    private AtomicLong nb_delivered;
 
     protected Broadcaster(List<Host> hosts, int id, long nb_msg) {
         this.networkManager = new NetworkManager(hosts, id);
@@ -31,7 +32,7 @@ public abstract class Broadcaster {
             }
         });
 
-        nb_delivered = 0;
+        nb_delivered = new AtomicLong();
     }
 
     // function that will broadcast and handle msg. Unique to each type of
@@ -56,7 +57,8 @@ public abstract class Broadcaster {
             // }
             // TOCLEAN
         }
-        while (nb_delivered < nb_msg);
+        while (nb_delivered.get() < hosts.size() * nb_msg)
+            ;
 
     }
 
@@ -73,7 +75,7 @@ public abstract class Broadcaster {
         log.append(n);
         log.append("\n");
         // Debug
-        System.out.println("b " + n);
+        // System.out.println("b " + n);
     }
 
     protected void logDeliver(Message m) {
@@ -82,9 +84,9 @@ public abstract class Broadcaster {
         log.append(" ");
         log.append(m.getMsgId());
         log.append("\n");
-        nb_delivered += 1;
+        nb_delivered.incrementAndGet();
         // Debug
-        System.out.println("d " + m.getId() + " " + m.getMsgId());
+        // System.out.println("d " + m.getId() + " " + m.getMsgId());
     }
 
     // Function that handle receiving, pass on to handleMsg for heart of broadcast
