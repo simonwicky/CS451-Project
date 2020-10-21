@@ -71,19 +71,13 @@ public abstract class Broadcaster {
     }
 
     protected void logBroadcast(long n) {
-        log.append("b ");
-        log.append(n);
-        log.append("\n");
+        log.append("b " + n + "\n");
         // Debug
         // System.out.println("b " + n);
     }
 
     protected void logDeliver(Message m) {
-        log.append("d ");
-        log.append(m.getId());
-        log.append(" ");
-        log.append(m.getMsgId());
-        log.append("\n");
+        log.append("d " + m.getId() + " " + m.getMsgId() + "\n");
         nb_delivered.incrementAndGet();
         // Debug
         // System.out.println("d " + m.getId() + " " + m.getMsgId());
