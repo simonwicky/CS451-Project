@@ -28,11 +28,16 @@ public class FIFOBroadcast extends URBBroadcast {
             boolean newMsg = false;
             // check for delivered message
             for (Broadcaster.Message m : message) {
+                // System.out.println("New message : " + m.getMsgId() + " : " + m.getId());
                 if (vc[m.getId()] == m.getMsgId()) {
                     deliveredMessage.add(m);
+                    // System.out.println("Delivering direct : " + m.getMsgId() + " : " +
+                    // m.getId());
                     newMsg = true;
                     vc[m.getId()]++;
                 } else {
+                    // System.out.println("Adding to pending : " + m.getMsgId() + " : " +
+                    // m.getId());
                     pending.add(m);
                 }
             }
@@ -44,8 +49,11 @@ public class FIFOBroadcast extends URBBroadcast {
             while (newMsg) {
                 newMsg = false;
                 for (Broadcaster.Message m : new ArrayList<>(pending)) {
+                    // System.out.println("Checking pending");
                     if (vc[m.getId()] == m.getMsgId()) {
                         deliveredMessage.add(m);
+                        // System.out.println("Delivering from pending : " + m.getMsgId() + " : " +
+                        // m.getId());
                         newMsg = true;
                         pending.remove(m);
                         vc[m.getId()]++;
@@ -53,7 +61,10 @@ public class FIFOBroadcast extends URBBroadcast {
                 }
 
             }
-
+            // System.out.println("Delivering : " + deliveredMessage.size());
+            if (deliveredMessage.size() == 0) {
+                return null;
+            }
             return deliveredMessage;
         } else {
             return null;
