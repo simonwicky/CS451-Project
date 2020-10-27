@@ -18,7 +18,7 @@ public abstract class Broadcaster {
 
     private AtomicLong nb_delivered;
 
-    protected Broadcaster(List<Host> hosts, int id, long nb_msg) {
+    protected Broadcaster(List<Host> hosts, byte id, long nb_msg) {
         this.networkManager = new NetworkManager(hosts, id);
         this.hosts = hosts;
         this.log = new StringBuffer();
@@ -39,16 +39,20 @@ public abstract class Broadcaster {
     // broadcaster.
     abstract protected void broadcast(byte[] msg);
 
-    abstract protected ArrayList<Message> handleMsg(byte[] msg, int id);
+    abstract protected ArrayList<Message> handleMsg(byte[] msg, byte id);
 
     public void start() {
+
+        // perfectlinks start
+        networkManager.start();
+
         // recvThread
         recvThread.start();
 
         // sendThread
         for (long i = 1; i <= nb_msg; ++i) {
             broadcast(ByteBuffer.allocate(8).putLong(i).array());
-
+            logBroadcast(i);
             // TOCLEAN : DEBUG ONLY
             // try {
             // Thread.sleep(5000);
@@ -57,7 +61,7 @@ public abstract class Broadcaster {
             // }
             // TOCLEAN
         }
-        while (nb_delivered.get() < hosts.size() * nb_msg)
+        while (nb_delivered.get() < nb_msg)
             ;
 
     }
@@ -107,10 +111,10 @@ public abstract class Broadcaster {
 
     public static class Message {
         private final long msgId;
-        private final int id;
+        private final byte id;
         private final byte[] data;
 
-        public Message(long msgId, int id, byte[] data) {
+        public Message(long msgId, byte id, byte[] data) {
             this.msgId = msgId;
             this.id = id;
             this.data = data;
@@ -120,7 +124,7 @@ public abstract class Broadcaster {
             return msgId;
         }
 
-        public int getId() {
+        public byte getId() {
             return id;
         }
 

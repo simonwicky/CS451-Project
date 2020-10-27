@@ -9,14 +9,14 @@ import java.util.Set;
 
 public class URBBroadcast extends Broadcaster {
 
-    private final int id;
+    private final byte id;
     private final int deliver_threshold;
 
     private List<Message> forward;
     private HashSet<Message> delivered;
-    private HashMap<Message, Set<Integer>> acks;
+    private HashMap<Message, Set<Byte>> acks;
 
-    public URBBroadcast(List<Host> hosts, int id, long nb_msg) {
+    public URBBroadcast(List<Host> hosts, byte id, long nb_msg) {
         super(hosts, id, nb_msg);
 
         this.forward = new ArrayList<>();
@@ -33,17 +33,16 @@ public class URBBroadcast extends Broadcaster {
         Broadcaster.Message m = reconstruct(msg_b);
         forward.add(m);
         BEbroadcast(msg_b);
-        logBroadcast(ByteBuffer.wrap(msg).getLong());
     }
 
     private void BEbroadcast(byte[] msg) {
         for (Host host : hosts) {
-            networkManager.sendTo(host.getId(), msg);
+            networkManager.sendTo((byte) host.getId(), msg);
         }
     }
 
     // Responsible for deliver event
-    protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, int from) {
+    protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, byte from) {
 
         Broadcaster.Message m = reconstruct(msg);
 
@@ -71,35 +70,21 @@ public class URBBroadcast extends Broadcaster {
 
     private byte[] prepareMsg(byte[] msg) {
 
-        byte[] id_b = ByteBuffer.allocate(4).putInt(id).array();
-        byte[] data = new byte[id_b.length + msg.length];
-        System.arraycopy(id_b, 0, data, 0, id_b.length);
-        System.arraycopy(msg, 0, data, id_b.length, msg.length);
+        byte[] data = new byte[1 + msg.length];
+        data[0] = id;
+        System.arraycopy(msg, 0, data, 1, msg.length);
         return data;
     }
 
     private Broadcaster.Message reconstruct(byte[] msg) {
 
-        byte[] origin_b = new byte[4];
+        byte origin = msg[0];
         byte[] msgId_b = new byte[8];
-        byte[] data = new byte[msg.length - origin_b.length - msgId_b.length];
-        System.arraycopy(msg, 0, origin_b, 0, origin_b.length);
-        System.arraycopy(msg, origin_b.length, msgId_b, 0, msgId_b.length);
-        System.arraycopy(msg, origin_b.length + msgId_b.length, data, 0, data.length);
-        int origin = ByteBuffer.wrap(origin_b).getInt();
+        byte[] data = new byte[msg.length - 1 - msgId_b.length];
+        System.arraycopy(msg, 1, msgId_b, 0, msgId_b.length);
+        System.arraycopy(msg, 1 + msgId_b.length, data, 0, data.length);
         long msgId = ByteBuffer.wrap(msgId_b).getLong();
         return new Broadcaster.Message(msgId, origin, data);
     }
-
-    // private class Message {
-    // private final byte[] data;
-    // private final int id;
-
-    // public Message(byte[] data, int id) {
-    // this.data = data;
-    // this.id = id;
-    // }
-
-    // }
 
 }

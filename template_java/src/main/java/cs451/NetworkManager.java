@@ -6,7 +6,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -17,13 +16,15 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class NetworkManager {
 
-    private HashMap<Integer, Host> idToHosts;
+    private HashMap<Byte, Host> idToHosts;
     private DatagramSocket socket;
-    private int id;
-    private HashMap<Integer, List<Message>> toBeAcked;
-    private HashMap<Integer, Lock> locks;
+    private byte id;
+    private HashMap<Byte, List<Message>> toBeAcked;
+    private HashMap<Byte, Lock> locks;
 
-    public NetworkManager(List<Host> hosts, int id) {
+    private Thread retransmitThread;
+
+    public NetworkManager(List<Host> hosts, byte id) {
         this.idToHosts = new HashMap<>();
         this.id = id;
         this.toBeAcked = new HashMap<>();
@@ -32,9 +33,9 @@ public class NetworkManager {
         try {
             // mapping setup, for fast sending and receiving
             for (Host host : hosts) {
-                this.idToHosts.put(host.getId(), host);
-                toBeAcked.put(host.getId(), new ArrayList<>());
-                locks.put(host.getId(), new ReentrantLock());
+                this.idToHosts.put((byte) host.getId(), host);
+                toBeAcked.put((byte) host.getId(), new ArrayList<>());
+                locks.put((byte) host.getId(), new ReentrantLock());
             }
 
             // socket creation
@@ -43,7 +44,9 @@ public class NetworkManager {
         } catch (SocketException | UnknownHostException e) {
             System.out.println("Socket could not be created: " + e.getMessage());
         }
-        new Thread() {
+
+        // thread for retransmission
+        retransmitThread = new Thread() {
             @Override
             public void run() {
                 while (true) {
@@ -55,10 +58,16 @@ public class NetworkManager {
                     retransmit();
                 }
             }
-        }.start();
+        };
     }
 
-    private void sendTo(int neighbourIndex, Message msg, boolean newMsg) {
+    public void start() {
+        retransmitThread.start();
+    }
+
+    // send a new message. newMsg to indicate if it needs to be added to the
+    // toBeAcked list
+    private void sendTo(byte neighbourIndex, Message msg, boolean newMsg) {
         try {
             byte[] buf = msg.serialize();
 
@@ -82,18 +91,17 @@ public class NetworkManager {
         }
     }
 
-    private void sendTo(int neighbourIndex, Message msg) {
+    private void sendTo(byte neighbourIndex, Message msg) {
         sendTo(neighbourIndex, msg, true);
     }
 
-    public void sendTo(int neighbourIndex, byte[] data) {
-        Message msg = new Message(id, data, 0);
-        sendTo(neighbourIndex, msg);
+    public void sendTo(byte neighbourIndex, byte[] data) {
+        Message msg = new Message(id, data, (byte) 0);
+        sendTo(neighbourIndex, msg, true);
     }
 
     private void retransmit() {
-        System.out.println("Beginning retransmission");
-        for (Map.Entry<Integer, List<Message>> entry : toBeAcked.entrySet()) {
+        for (Map.Entry<Byte, List<Message>> entry : toBeAcked.entrySet()) {
             locks.get(entry.getKey()).lock();
             for (Message msg : entry.getValue()) {
                 sendTo(entry.getKey(), msg, false);
@@ -105,14 +113,11 @@ public class NetworkManager {
 
     // return a message
     public Message receive() throws IOException {
-        byte[] buf = new byte[1000];
+        byte[] buf = new byte[1500];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         socket.receive(packet);
         Message msg = Message.fromBytes(packet.getData(), packet.getLength());
         if (msg.type == 1) {
-            // debug
-            // System.out.println("ACK from " + msg.id);
-
             // handle ack
             for (Message m : new ArrayList<>(toBeAcked.get(msg.id))) {
                 if (Arrays.equals(m.data, msg.data)) {
@@ -127,7 +132,7 @@ public class NetworkManager {
             return receive();
         } else {
             // ack the msg and pass it to Broadcaster
-            sendTo(msg.id, new Message(id, msg.data, 1));
+            sendTo(msg.id, new Message(id, msg.data, (byte) 1));
             return msg;
         }
     }
@@ -138,24 +143,23 @@ public class NetworkManager {
 
     public static class Message {
 
-        private int id;
+        private byte id;
         private byte[] data;
         // 0 is actual msg, 1 is ack
-        private int type;
+        private byte type;
 
-        public Message(int id, byte[] data, int type) {
+        public Message(byte id, byte[] data, byte type) {
             this.id = id;
             this.data = data;
             this.type = type;
         }
 
         private byte[] serialize() {
-            byte[] id_serial = ByteBuffer.allocate(4).putInt(id).array();
-            byte[] type_serial = ByteBuffer.allocate(4).putInt(type).array();
-            byte[] out = new byte[id_serial.length + type_serial.length + data.length];
-            System.arraycopy(id_serial, 0, out, 0, id_serial.length);
-            System.arraycopy(type_serial, 0, out, id_serial.length, type_serial.length);
-            System.arraycopy(data, 0, out, id_serial.length + type_serial.length, data.length);
+
+            byte[] out = new byte[2 + data.length];
+            out[0] = id;
+            out[1] = type;
+            System.arraycopy(data, 0, out, 2, data.length);
             return out;
         }
 
@@ -163,20 +167,18 @@ public class NetworkManager {
             if (nb_bytes < 8) {
                 return null;
             }
-            byte[] id_b = new byte[4];
-            byte[] type_b = new byte[4];
-            byte[] data = new byte[nb_bytes - 8];
-            System.arraycopy(bytes, 0, id_b, 0, id_b.length);
-            System.arraycopy(bytes, id_b.length, type_b, 0, type_b.length);
-            System.arraycopy(bytes, id_b.length + type_b.length, data, 0, data.length);
+            byte id;
+            byte type;
+            byte[] data = new byte[nb_bytes - 2];
+            id = bytes[0];
+            type = bytes[1];
+            System.arraycopy(bytes, 2, data, 0, data.length);
 
-            int id = ByteBuffer.wrap(id_b).getInt();
-            int type = ByteBuffer.wrap(type_b).getInt();
             return new Message(id, data, type);
 
         }
 
-        public int getId() {
+        public byte getId() {
             return id;
         }
 

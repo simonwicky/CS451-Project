@@ -9,20 +9,20 @@ public class LCBroadcast extends URBBroadcast {
 
     private long[] vc;
 
-    private HashMap<Integer, int[]> dependencies;
+    private HashMap<Byte, byte[]> dependencies;
 
     private List<Broadcaster.Message> pending;
 
-    public LCBroadcast(List<Host> hosts, int id, long nb_msg, String[] config) {
+    public LCBroadcast(List<Host> hosts, byte id, long nb_msg, String[] config) {
         super(hosts, id, nb_msg);
         // dependency setup
         this.dependencies = new HashMap<>();
         for (String s : config) {
             String[] s2 = s.split(" ");
-            int id_dep = Integer.parseInt(s2[0]);
-            this.dependencies.put(id_dep, new int[s2.length]);
+            byte id_dep = (byte) Integer.parseInt(s2[0]);
+            this.dependencies.put(id_dep, new byte[s2.length]);
             for (int i = 0; i < s2.length; i++) {
-                this.dependencies.get(id_dep)[i] = Integer.parseInt(s2[i]);
+                this.dependencies.get(id_dep)[i] = (byte) Integer.parseInt(s2[i]);
             }
         }
 
@@ -39,7 +39,7 @@ public class LCBroadcast extends URBBroadcast {
         super.broadcast(encodeVC(msg));
     }
 
-    protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, int from) {
+    protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, byte from) {
         ArrayList<Broadcaster.Message> message = super.handleMsg(msg, from);
         ArrayList<Broadcaster.Message> deliveredMessage = new ArrayList<>();
         if (message != null) {
@@ -47,7 +47,7 @@ public class LCBroadcast extends URBBroadcast {
 
             for (Broadcaster.Message m : message) {
                 long[] vc_m = decodeVC(m.getData());
-                int[] dep = dependencies.get(m.getId());
+                byte[] dep = dependencies.get(m.getId());
                 boolean shouldDeliver = true;
                 for (int d : dep) {
                     if (vc[d] < vc_m[d]) {
@@ -71,7 +71,7 @@ public class LCBroadcast extends URBBroadcast {
                 newMsg = false;
                 for (Broadcaster.Message m : new ArrayList<>(pending)) {
                     long[] vc_m = decodeVC(m.getData());
-                    int[] dep = dependencies.get(m.getId());
+                    byte[] dep = dependencies.get(m.getId());
                     boolean shouldDeliver = true;
                     for (int d : dep) {
                         if (vc[d] < vc_m[d]) {
