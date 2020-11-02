@@ -12,14 +12,14 @@ public class URBBroadcast extends Broadcaster {
     private final byte id;
     private final int deliver_threshold;
 
-    private List<Message> forward;
+    private HashSet<Message> forward;
     private HashSet<Message> delivered;
     private HashMap<Message, Set<Byte>> acks;
 
     public URBBroadcast(List<Host> hosts, byte id, long nb_msg) {
         super(hosts, id, nb_msg);
 
-        this.forward = new ArrayList<>();
+        this.forward = new HashSet<>();
         this.delivered = new HashSet<>();
         this.acks = new HashMap<>();
         this.id = id;
@@ -45,9 +45,9 @@ public class URBBroadcast extends Broadcaster {
     protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, byte from) {
 
         Broadcaster.Message m = reconstruct(msg);
+        System.out.println("Got " + m.getId() + " " + m.getMsgId() + " from " + from);
 
-        if (!forward.contains(m)) {
-            forward.add(m);
+        if (forward.add(m)) {
             BEbroadcast(msg);
         }
 
