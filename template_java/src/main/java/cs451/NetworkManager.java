@@ -105,13 +105,14 @@ public class NetworkManager {
             locks.get(entry.getKey()).lock();
             for (Message msg : entry.getValue()) {
                 sendTo(entry.getKey(), msg, false);
-                // System.out.println("Retransmitting lost message");
             }
             locks.get(entry.getKey()).unlock();
         }
     }
 
     // return a message
+    // might return duplicate if ack is lost. Duplicate will be discarded by upper
+    // layer.
     public Message receive() throws IOException {
         byte[] buf = new byte[1500];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -141,6 +142,8 @@ public class NetworkManager {
         socket.close();
     }
 
+    // Content agnostic message. Extract type and sender, the rest is content
+    // handled by upper layer
     public static class Message {
 
         private byte id;

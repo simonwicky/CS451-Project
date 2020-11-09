@@ -35,10 +35,13 @@ public abstract class Broadcaster {
         nb_delivered = new AtomicLong();
     }
 
-    // function that will broadcast and handle msg. Unique to each type of
+    // function that will broadcast msg. Unique to each type of
     // broadcaster.
     abstract protected void broadcast(byte[] msg);
 
+    // function that will handle msg. Unique to each type of
+    // broadcaster. Some Broadcaster will return many messages upon reception of
+    // a single one, e.g FIFO, hence the list
     abstract protected ArrayList<Message> handleMsg(byte[] msg, byte id);
 
     public void start() {
@@ -53,15 +56,8 @@ public abstract class Broadcaster {
         for (long i = 1; i <= nb_msg; ++i) {
             broadcast(ByteBuffer.allocate(8).putLong(i).array());
             logBroadcast(i);
-            // TOCLEAN : DEBUG ONLY
-            // try {
-            // Thread.sleep(5000);
-            // } catch (InterruptedException e) {
-            // e.printStackTrace();
-            // }
-            // TOCLEAN
         }
-        while (nb_delivered.get() < nb_msg * hosts.size())
+        while (nb_delivered.get() < nb_msg)
             ;
 
     }
@@ -76,15 +72,11 @@ public abstract class Broadcaster {
 
     protected void logBroadcast(long n) {
         log.append("b " + n + "\n");
-        // Debug
-        // System.out.println("b " + n);
     }
 
     protected void logDeliver(Message m) {
         log.append("d " + m.getId() + " " + m.getMsgId() + "\n");
         nb_delivered.incrementAndGet();
-        // Debug
-        // System.out.println("d " + m.getId() + " " + m.getMsgId());
     }
 
     // Function that handle receiving, pass on to handleMsg for heart of broadcast
@@ -109,6 +101,11 @@ public abstract class Broadcaster {
         }
     }
 
+    // type for generic broadcasted message. Extract original sender ID and actual
+    // message (msgId). The rest is Broadcaster specific
+    //
+    // Following above definition, two messages are equal iff they have the same id
+    // and msgId
     public static class Message {
         private final long msgId;
         private final byte id;
