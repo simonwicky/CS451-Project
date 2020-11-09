@@ -61,7 +61,7 @@ public abstract class Broadcaster {
             // }
             // TOCLEAN
         }
-        while (nb_delivered.get() < hosts.size() * nb_msg)
+        while (nb_delivered.get() < nb_msg * hosts.size())
             ;
 
     }

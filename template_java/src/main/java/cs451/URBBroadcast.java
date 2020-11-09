@@ -30,14 +30,17 @@ public class URBBroadcast extends Broadcaster {
     // Responsible for broadcast event
     protected void broadcast(byte[] msg) {
         byte[] msg_b = prepareMsg(msg);
-        Broadcaster.Message m = reconstruct(msg_b);
-        forward.add(m);
-        BEbroadcast(msg_b);
+        handleMsg(msg_b, id);
+        // Broadcaster.Message m = reconstruct(msg_b);
+        // forward.add(m);
+        // BEbroadcast(msg_b);
     }
 
     private void BEbroadcast(byte[] msg) {
         for (Host host : hosts) {
-            networkManager.sendTo((byte) host.getId(), msg);
+            if (host.getId() != id) {
+                networkManager.sendTo((byte) host.getId(), msg);
+            }
         }
     }
 
@@ -57,9 +60,14 @@ public class URBBroadcast extends Broadcaster {
         if (acks.get(m).add(from)) {
             // new ack. Since we deliver upon majority, we can check here if it can be
             // delivered.
-            if (acks.get(m).size() >= deliver_threshold && forward.contains(m) && !delivered.add(m)) {
+            // m is guaranteed to be in forward, no need to check
+            // m is guartanteed to be undelivered if we got here
+            if (acks.get(m).size() >= deliver_threshold) {// && forward.contains(m) && delivered.add(m)) {
                 ArrayList<Broadcaster.Message> list = new ArrayList<>();
                 list.add(m);
+                delivered.add(m);
+                forward.remove(m);
+                acks.remove(m);
                 return list;
             }
         }
