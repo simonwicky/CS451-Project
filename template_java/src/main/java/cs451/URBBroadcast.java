@@ -30,17 +30,15 @@ public class URBBroadcast extends Broadcaster {
     // Responsible for broadcast event
     protected void broadcast(byte[] msg) {
         byte[] msg_b = prepareMsg(msg);
-        // here, handle message will broadcast to everyone but itself, and handle it as
-        // it if has been recevied
-        handleMsg(msg_b, id);
+        Broadcaster.Message m = reconstruct(msg);
+        forward.add(m);
+        BEbroadcast(msg_b);
     }
 
     // broadcast to everyone but itself
     private void BEbroadcast(byte[] msg) {
         for (Host host : hosts) {
-            if (host.getId() != id) {
-                networkManager.sendTo((byte) host.getId(), msg);
-            }
+            networkManager.sendTo((byte) host.getId(), msg);
         }
     }
 
@@ -60,7 +58,7 @@ public class URBBroadcast extends Broadcaster {
             BEbroadcast(msg);
         }
 
-        // create the ack set if it doesn't exist'
+        // create the ack set if it doesn't exist
         if (acks.get(m) == null) {
             acks.put(m, new HashSet<>());
         }
