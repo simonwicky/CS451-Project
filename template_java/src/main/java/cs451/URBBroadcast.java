@@ -30,17 +30,15 @@ public class URBBroadcast extends Broadcaster {
     // Responsible for broadcast event
     protected void broadcast(byte[] msg) {
         byte[] msg_b = prepareMsg(msg);
-        handleMsg(msg_b, id);
-        // Broadcaster.Message m = reconstruct(msg_b);
-        // forward.add(m);
-        // BEbroadcast(msg_b);
+        Broadcaster.Message m = reconstruct(msg);
+        forward.add(m);
+        BEbroadcast(msg_b);
     }
 
+    // broadcast to everyone but itself
     private void BEbroadcast(byte[] msg) {
         for (Host host : hosts) {
-            if (host.getId() != id) {
-                networkManager.sendTo((byte) host.getId(), msg);
-            }
+            networkManager.sendTo((byte) host.getId(), msg);
         }
     }
 
@@ -48,26 +46,35 @@ public class URBBroadcast extends Broadcaster {
     protected ArrayList<Broadcaster.Message> handleMsg(byte[] msg, byte from) {
 
         Broadcaster.Message m = reconstruct(msg);
-        System.out.println("Got " + m.getId() + " " + m.getMsgId() + " from " + from);
 
+        // if we have already deliver, we also forwarded it. So we can simply return
+        // here
+        if (delivered.contains(m)) {
+            return null;
+        }
+
+        // forward it if we don't have already
         if (forward.add(m)) {
             BEbroadcast(msg);
         }
 
+        // create the ack set if it doesn't exist
         if (acks.get(m) == null) {
             acks.put(m, new HashSet<>());
         }
+        // check if it as an ack from someone else
         if (acks.get(m).add(from)) {
             // new ack. Since we deliver upon majority, we can check here if it can be
             // delivered.
             // m is guaranteed to be in forward, no need to check
-            // m is guartanteed to be undelivered if we got here
-            if (acks.get(m).size() >= deliver_threshold) {// && forward.contains(m) && delivered.add(m)) {
-                ArrayList<Broadcaster.Message> list = new ArrayList<>();
-                list.add(m);
+            // m is guaranteed to be undelivered if we got here
+            if (acks.get(m).size() >= deliver_threshold) {
                 delivered.add(m);
+                // clean up acks and forward for space.
                 forward.remove(m);
                 acks.remove(m);
+                ArrayList<Broadcaster.Message> list = new ArrayList<>();
+                list.add(m);
                 return list;
             }
         }
@@ -76,6 +83,7 @@ public class URBBroadcast extends Broadcaster {
 
     }
 
+    // add its id before the message. URB semantic
     private byte[] prepareMsg(byte[] msg) {
 
         byte[] data = new byte[1 + msg.length];

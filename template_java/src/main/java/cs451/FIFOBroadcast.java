@@ -8,6 +8,8 @@ public class FIFOBroadcast extends URBBroadcast {
     private long[] vc;
     private List<Broadcaster.Message> pending;
 
+    // semantic is to keep an arry of long to keep track of the NEXT message we
+    // expect (a la TCP)
     public FIFOBroadcast(List<Host> hosts, byte id, long nb_msg) {
         super(hosts, id, nb_msg);
         this.vc = new long[hosts.size() + 1];
@@ -28,11 +30,14 @@ public class FIFOBroadcast extends URBBroadcast {
             boolean newMsg = false;
             // check for delivered message
             for (Broadcaster.Message m : message) {
+                // if it's the id we excpet, increment it, deliver the message and flag
+                // newMessage
                 if (vc[m.getId()] == m.getMsgId()) {
                     deliveredMessage.add(m);
                     newMsg = true;
                     vc[m.getId()]++;
                 } else {
+                    // if not, store in pending
                     pending.add(m);
                 }
             }
