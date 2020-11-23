@@ -4,10 +4,15 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class LCBroadcast extends URBBroadcast {
 
     private long[] vc;
+    private Lock vcLock;
+    private long lsn;
+    private byte id;
 
     private HashMap<Byte, byte[]> dependencies;
 
@@ -32,6 +37,9 @@ public class LCBroadcast extends URBBroadcast {
         }
 
         this.pending = new ArrayList<>();
+        this.vcLock = new ReentrantLock();
+        this.lsn = 0;
+        this.id = id;
 
     }
 
@@ -50,14 +58,21 @@ public class LCBroadcast extends URBBroadcast {
                 byte[] dep = dependencies.get(m.getId());
                 boolean shouldDeliver = true;
                 for (int d : dep) {
-                    if (vc[d] < vc_m[d]) {
+                    if (!(vc[d] >= vc_m[d])) {
                         shouldDeliver = false;
                     }
                 }
                 if (shouldDeliver) {
                     deliveredMessage.add(m);
                     newMsg = true;
+                    System.out.println("Delivered with VC : " + m.getId() + " " + m.getMsgId());
+                    for (int d : dep) {
+                        System.out.println(d + " " + vc[d]);
+                    }
+                    System.out.println("End");
+                    vcLock.lock();
                     vc[m.getId()]++;
+                    vcLock.unlock();
                 } else {
                     pending.add(m);
                 }
@@ -74,16 +89,22 @@ public class LCBroadcast extends URBBroadcast {
                     byte[] dep = dependencies.get(m.getId());
                     boolean shouldDeliver = true;
                     for (int d : dep) {
-                        if (vc[d] < vc_m[d]) {
+                        if (!(vc[d] >= vc_m[d])) {
                             shouldDeliver = false;
                         }
                     }
                     if (shouldDeliver) {
                         deliveredMessage.add(m);
+                        pending.remove(m);
                         newMsg = true;
+                        System.out.println("Delivered with VC : " + m.getId() + " " + m.getMsgId());
+                        for (int d : dep) {
+                            System.out.println(d + " " + vc[d]);
+                        }
+                        System.out.println("End");
+                        vcLock.lock();
                         vc[m.getId()]++;
-                    } else {
-                        pending.add(m);
+                        vcLock.unlock();
                     }
                 }
 
@@ -98,10 +119,18 @@ public class LCBroadcast extends URBBroadcast {
     private byte[] encodeVC(byte[] msg) {
         byte[] data = new byte[msg.length + 8 * vc.length];
         System.arraycopy(msg, 0, data, 0, msg.length);
+        System.err.println("VC Begin");
+        vcLock.lock();
         for (int i = 0; i < vc.length; i++) {
             byte[] vc_b = ByteBuffer.allocate(8).putLong(vc[i]).array();
             System.arraycopy(vc_b, 0, data, msg.length + 8 * i, vc_b.length);
+            System.err.println(i + " " + vc[i]);
         }
+        vcLock.unlock();
+        byte[] lsn_b = ByteBuffer.allocate(8).putLong(lsn).array();
+        System.arraycopy(lsn_b, 0, data, msg.length + 8 * id, lsn_b.length);
+        lsn += 1;
+        System.err.println("VC End");
         return data;
     }
 

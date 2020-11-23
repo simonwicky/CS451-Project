@@ -30,7 +30,7 @@ public class URBBroadcast extends Broadcaster {
     // Responsible for broadcast event
     protected void broadcast(byte[] msg) {
         byte[] msg_b = prepareMsg(msg);
-        Broadcaster.Message m = reconstruct(msg);
+        Broadcaster.Message m = reconstruct(msg_b);
         forward.add(m);
         BEbroadcast(msg_b);
     }

@@ -255,8 +255,43 @@ class LCausalBroadcastValidation(Validation):
         return (hosts, config)
 
     def checkProcess(self, pid):
+        filePath = os.path.join(self.outputDirPath, "proc{:02d}.output".format(pid))
 
-        raise NotImplementedError()
+        i = 1
+        nextMessage = defaultdict(lambda: 1)
+        filename = os.path.basename(filePath)
+
+        with open(filePath) as f:
+            for lineNumber, line in enumerate(f):
+                tokens = line.split()
+
+                # Check broadcast
+                if tokens[0] == "b":
+                    msg = int(tokens[1])
+                    if msg != i:
+                        print(
+                            "File {}, Line {}: Messages broadcast out of order. Expected message {} but broadcast message {}".format(
+                                filename, lineNumber, i, msg
+                            )
+                        )
+                        return False
+                    i += 1
+
+                # Check delivery
+                if tokens[0] == "d":
+                    sender = int(tokens[1])
+                    msg = int(tokens[2])
+                    if msg != nextMessage[sender]:
+                        print(
+                            "File {}, Line {}: Message delivered out of order. Expected message {}, but delivered message {}".format(
+                                filename, lineNumber, nextMessage[sender], msg
+                            )
+                        )
+                        return False
+                    else:
+                        nextMessage[sender] = msg + 1
+
+        return True
 
 
 class StressTest:

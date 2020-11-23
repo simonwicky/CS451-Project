@@ -89,7 +89,7 @@ public class Main {
 
         // Brodcast setup
         // broadcaster = new URBBroadcast(parser.hosts(), (byte) parser.myId(), nb_msg);
-        broadcaster = new FIFOBroadcast(parser.hosts(), (byte) parser.myId(), nb_msg);
+        broadcaster = new LCBroadcast(parser.hosts(), (byte) parser.myId(), nb_msg, configArray);
         // logfile setup
         path = Paths.get(parser.output());
 
