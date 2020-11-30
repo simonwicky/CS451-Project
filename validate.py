@@ -233,8 +233,13 @@ class LCausalBroadcastValidation(Validation):
         hosts = tempfile.NamedTemporaryFile(mode="w")
         config = tempfile.NamedTemporaryFile(mode="w")
 
+        # membership file for the validate
+        membershipFile = open(self.outputDirPath + "/membership", "w")
+        membershipFile.write("{}\n".format(self.processes))
+
         for i in range(1, self.processes + 1):
             hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP + i))
+            membershipFile.write("{} 0.0.0.0 {}\n".format(i, PROCESSES_BASE_IP + i))
 
         hosts.flush()
 
@@ -250,48 +255,21 @@ class LCausalBroadcastValidation(Validation):
 
             self.dependencies[i] = list_dep
             config.write("{}\n".format(" ".join([str(x) for x in list_dep])))
+            membershipFile.write("{}\n".format(" ".join([str(x) for x in list_dep])))
         config.flush()
-        print(self.dependencies)
+
+        membershipFile.close()
         return (hosts, config)
 
     def checkProcess(self, pid):
-        filePath = os.path.join(self.outputDirPath, "proc{:02d}.output".format(pid))
-
-        i = 1
-        nextMessage = defaultdict(lambda: 1)
-        filename = os.path.basename(filePath)
-
-        with open(filePath) as f:
-            for lineNumber, line in enumerate(f):
-                tokens = line.split()
-
-                # Check broadcast
-                if tokens[0] == "b":
-                    msg = int(tokens[1])
-                    if msg != i:
-                        print(
-                            "File {}, Line {}: Messages broadcast out of order. Expected message {} but broadcast message {}".format(
-                                filename, lineNumber, i, msg
-                            )
-                        )
-                        return False
-                    i += 1
-
-                # Check delivery
-                if tokens[0] == "d":
-                    sender = int(tokens[1])
-                    msg = int(tokens[2])
-                    if msg != nextMessage[sender]:
-                        print(
-                            "File {}, Line {}: Message delivered out of order. Expected message {}, but delivered message {}".format(
-                                filename, lineNumber, nextMessage[sender], msg
-                            )
-                        )
-                        return False
-                    else:
-                        nextMessage[sender] = msg + 1
-
-        return True
+        result = subprocess.run(
+            ["python3", "./test_lcb.py", self.outputDirPath], stdout=subprocess.PIPE
+        )
+        correctIncorrect = result.stdout.decode("utf-8").split("\n")[-2]
+        if correctIncorrect == "CORRECT":
+            return True
+        else:
+            return False
 
 
 class StressTest:
@@ -509,7 +487,7 @@ def main(processes, messages, runscript, broadcastType, logsDir, testConfig):
         initBarrierThread.join()
         print("All processes have been initialized.")
 
-        st.run()
+        # st.run()
         print("StressTest is complete.")
 
         print("Resuming stopped processes.")
