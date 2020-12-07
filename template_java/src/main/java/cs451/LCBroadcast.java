@@ -54,22 +54,9 @@ public class LCBroadcast extends URBBroadcast {
             boolean newMsg = false;
 
             for (Broadcaster.Message m : message) {
-                long[] vc_m = decodeVC(m.getData());
-                byte[] dep = dependencies.get(m.getId());
-                boolean shouldDeliver = true;
-                for (int d : dep) {
-                    if (!(vc[d] >= vc_m[d])) {
-                        shouldDeliver = false;
-                    }
-                }
-                if (shouldDeliver) {
+                if (canDeliver(m)) {
                     deliveredMessage.add(m);
                     newMsg = true;
-                    System.out.println("Delivered with VC : " + m.getId() + " " + m.getMsgId());
-                    for (int d : dep) {
-                        System.out.println(d + " " + vc[d]);
-                    }
-                    System.out.println("End");
                     vcLock.lock();
                     vc[m.getId()]++;
                     vcLock.unlock();
@@ -85,23 +72,10 @@ public class LCBroadcast extends URBBroadcast {
             while (newMsg) {
                 newMsg = false;
                 for (Broadcaster.Message m : new ArrayList<>(pending)) {
-                    long[] vc_m = decodeVC(m.getData());
-                    byte[] dep = dependencies.get(m.getId());
-                    boolean shouldDeliver = true;
-                    for (int d : dep) {
-                        if (!(vc[d] >= vc_m[d])) {
-                            shouldDeliver = false;
-                        }
-                    }
-                    if (shouldDeliver) {
-                        deliveredMessage.add(m);
+                    if (canDeliver(m)) {
                         pending.remove(m);
+                        deliveredMessage.add(m);
                         newMsg = true;
-                        System.out.println("Delivered with VC : " + m.getId() + " " + m.getMsgId());
-                        for (int d : dep) {
-                            System.out.println(d + " " + vc[d]);
-                        }
-                        System.out.println("End");
                         vcLock.lock();
                         vc[m.getId()]++;
                         vcLock.unlock();
@@ -119,18 +93,15 @@ public class LCBroadcast extends URBBroadcast {
     private byte[] encodeVC(byte[] msg) {
         byte[] data = new byte[msg.length + 8 * vc.length];
         System.arraycopy(msg, 0, data, 0, msg.length);
-        System.err.println("VC Begin");
         vcLock.lock();
         for (int i = 0; i < vc.length; i++) {
             byte[] vc_b = ByteBuffer.allocate(8).putLong(vc[i]).array();
             System.arraycopy(vc_b, 0, data, msg.length + 8 * i, vc_b.length);
-            System.err.println(i + " " + vc[i]);
         }
         vcLock.unlock();
         byte[] lsn_b = ByteBuffer.allocate(8).putLong(lsn).array();
         System.arraycopy(lsn_b, 0, data, msg.length + 8 * id, lsn_b.length);
         lsn += 1;
-        System.err.println("VC End");
         return data;
     }
 
@@ -142,5 +113,16 @@ public class LCBroadcast extends URBBroadcast {
             vectorClock[i] = ByteBuffer.wrap(b).getLong();
         }
         return vectorClock;
+    }
+
+    private boolean canDeliver(Broadcaster.Message m) {
+        long[] vc_m = decodeVC(m.getData());
+        byte[] dep = dependencies.get(m.getId());
+        for (int d : dep) {
+            if (!(vc[d] >= vc_m[d])) {
+                return false;
+            }
+        }
+        return true;
     }
 }
