@@ -8,3 +8,7 @@ template_java/.vscode/
 *.out
 
 logs/
+
+260589/
+
+*.zip

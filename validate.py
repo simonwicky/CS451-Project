@@ -247,7 +247,7 @@ class LCausalBroadcastValidation(Validation):
         self.dependencies = [0] * (self.processes + 1)
         for i in range(1, self.processes + 1):
             config.write("{} ".format(i))
-
+            membershipFile.write("{} ".format(i))
             n = random.randint(0, self.processes)
             list_dep = random.sample(range(1, self.processes + 1), n)
             if i in list_dep:
@@ -487,7 +487,7 @@ def main(processes, messages, runscript, broadcastType, logsDir, testConfig):
         initBarrierThread.join()
         print("All processes have been initialized.")
 
-        # st.run()
+        st.run()
         print("StressTest is complete.")
 
         print("Resuming stopped processes.")
