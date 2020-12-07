@@ -54,8 +54,10 @@ public abstract class Broadcaster {
 
         // sendThread
         for (long i = 1; i <= nb_msg; ++i) {
-            broadcast(ByteBuffer.allocate(8).putLong(i).array());
-            logBroadcast(i);
+            synchronized (this) {
+                broadcast(ByteBuffer.allocate(8).putLong(i).array());
+                logBroadcast(i);
+            }
         }
         while (nb_delivered.get() < nb_msg)
             ;
@@ -85,10 +87,12 @@ public abstract class Broadcaster {
         while (true) {
             try {
                 NetworkManager.Message recv = networkManager.receive();
-                ArrayList<Message> msgs = handleMsg(recv.getData(), recv.getId());
-                if (msgs != null) {
-                    for (Message m : msgs) {
-                        logDeliver(m);
+                synchronized (this) {
+                    ArrayList<Message> msgs = handleMsg(recv.getData(), recv.getId());
+                    if (msgs != null) {
+                        for (Message m : msgs) {
+                            logDeliver(m);
+                        }
                     }
                 }
             } catch (SocketException e) {
